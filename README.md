@@ -22,7 +22,6 @@ The HuC6280 is a 65C02 derivative with extra opcodes and a paged memory model. *
 |------|--------|---------|
 | [HuC](https://github.com/pce-devel/huc) | Build from source | Provides `pceas` (assembler), `pcxtool` (graphics conversion forward path) + `pce2png` (verify VDC output by re-rendering it), `mml` (music), and the **CORE(not TM)** library used as the system HAL |
 | [Geargrafx](https://github.com/drhelius/Geargrafx) | GitHub releases | PCE / TG-16 / SuperGrafx / CD-ROM² emulator with a full debugger; auto-loads PCEAS `.sym` files for source-level debugging |
-| [Aetherbyte Squirrel](https://aetherbyte.itch.io/squirrel) | itch.io | Audio engine for music + SFX (used at runtime, not in the build pipeline) |
 
 ### Locating HuC
 
@@ -175,12 +174,10 @@ Currently a stub — the `assets/` and `scripts/` directories are empty. As the 
 | `assets/fonts/*.pcx`        | `pcxtool` (HuC)          | `build/pce/<font>.dat` 8x8 font blob |
 | `assets/tiles/<zone>/*.pcx` | `pcxtool` + Python wrapper | tile pool + palette + name include |
 | `assets/sprites/*.pcx`      | `pcxtool`                | sprite blob + palette                |
-| `assets/music/*.mml`        | `mml` (HuC)              | Aetherbyte Squirrel-compatible music |
+| `assets/music/*.mml`        | `mml` (HuC)              | compiled music data                  |
 | `assets/sfx/*.wav`          | `wav2vox` (HuC)          | ADPCM sample blob                    |
 
 `pcxtool` operates on PCX inputs natively, so a Python wrapper in `scripts/` will likely sit in front of it to convert PNG authoring sources into PCX (Pillow handles this in two lines) before invoking `pcxtool` for the actual PCE-format conversion. `pce2png` is the inverse — re-renders a VDC memory dump back into a PNG so you can eyeball-verify what the build pipeline produced.
-
-Audio playback at runtime is handled by the **Aetherbyte Squirrel** engine, included as a binary blob at link time alongside MML-compiled tracks.
 
 ## Hello-world walkthrough
 
