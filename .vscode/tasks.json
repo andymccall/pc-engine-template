@@ -1,0 +1,46 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build: pce",
+            "type": "shell",
+            "command": "make",
+            "args": ["build-pce"],
+            "group": { "kind": "build", "isDefault": true },
+            "problemMatcher": ["$gcc"],
+            "presentation": { "reveal": "silent", "panel": "shared", "clear": true }
+        },
+        {
+            "label": "run: pce",
+            "type": "shell",
+            "command": "make",
+            "args": ["run-pce"],
+            "problemMatcher": [],
+            "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+        },
+        {
+            "label": "load: pce",
+            "type": "shell",
+            "command": "make",
+            "args": ["load-pce"],
+            "problemMatcher": [],
+            "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+        },
+        {
+            "label": "clean",
+            "type": "shell",
+            "command": "make",
+            "args": ["clean"],
+            "problemMatcher": [],
+            "presentation": { "reveal": "silent", "panel": "shared", "clear": true }
+        },
+        {
+            "label": "package",
+            "type": "shell",
+            "command": "make",
+            "args": ["package"],
+            "problemMatcher": ["$gcc"],
+            "presentation": { "reveal": "silent", "panel": "shared", "clear": true }
+        }
+    ]
+}
