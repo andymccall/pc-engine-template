@@ -1,14 +1,10 @@
 # ---------------------------------------------------------------------------
 # PC Engine / TurboGrafx-16 Template - Master Makefile
 # ---------------------------------------------------------------------------
-# Single-platform template for the PC Engine (HuC6280). Built with PCEAS,
-# the assembler shipped with HuC (https://github.com/pce-devel/huc).
-# Output is a HuCard ROM (.pce) playable on Geargrafx, Mesen2, Mednafen,
-# Ootake, or real hardware via a flash cart.
-#
-# Structure mirrors the multi-platform layout from from-the-dead so a
-# second platform can be added later under src/<plat>/ with its own build
-# target without disturbing this one.
+# Template for the PC Engine (HuC6280). Built with PCEAS, the assembler
+# shipped with HuC (https://github.com/pce-devel/huc). Output is a HuCard
+# ROM (.pce) playable on Geargrafx, Mesen2, Mednafen, Ootake, or real
+# hardware via a flash cart.
 # ---------------------------------------------------------------------------
 
 NAME       = hello
@@ -19,7 +15,7 @@ GEARGRAFX  = geargrafx
 
 # HuC install root - derived from where pceas lives so the template works
 # regardless of where the user has unpacked HuC. Override on the command
-# line if pceas isn't on PATH yet:  make HUC_HOME=/path/to/huc build-pce
+# line if pceas isn't on PATH yet:  make HUC_HOME=/path/to/huc build
 HUC_HOME  ?= $(realpath $(dir $(shell command -v $(PCEAS)))/..)
 
 # --- Directories -----------------------------------------------------------
@@ -75,29 +71,22 @@ PCE_SYM    = $(BUILDDIR)/pce/$(NAME).sym
 PCE_LST    = $(BUILDDIR)/pce/$(NAME).lst
 
 # --- Phony targets ---------------------------------------------------------
-.PHONY: all build build-pce run run-pce load load-pce clean package help check-tools
+.PHONY: all build run load clean package help check-tools
 
-all: build-pce
-
-# Top-level convenience aliases. While only PCE is wired up, "make build",
-# "make run", and "make load" act on the PCE target. When a second platform
-# is added, these become explicit (build-x16 / build-neo / etc.) and the
-# bare aliases either go away or stay pointing at the primary target.
-build: build-pce
-run:   run-pce
-load:  load-pce
+all: build
 
 help:
 	@echo "Targets:"
-	@echo "  build / build-pce   PC Engine / TG-16 (HuC6280) -> $(PCE_OUT)"
-	@echo "  run   / run-pce     launch Geargrafx with the ROM (auto-loads"
-	@echo "                      $(notdir $(PCE_SYM)) for symbol-aware debug)"
-	@echo "  load  / load-pce    alias for run-pce (Geargrafx has no auto-run"
-	@echo "                      vs load-only distinction; provided for parity"
-	@echo "                      with the multi-platform Makefile convention)"
-	@echo "  check-tools         verify pceas + geargrafx are on PATH"
-	@echo "  clean               remove build/ and release/"
-	@echo "  package             copy ROM + README into release/"
+	@echo "  build         PC Engine / TG-16 (HuC6280) -> $(PCE_OUT)"
+	@echo "  run           launch Geargrafx with the ROM auto-loaded"
+	@echo "                (and $(notdir $(PCE_SYM)) for symbol-aware debug)"
+	@echo "  load          launch Geargrafx WITHOUT a ROM and print the"
+	@echo "                build artefact paths; load via 'Open ROM/CD'"
+	@echo "                from the emulator menu. Useful for clean"
+	@echo "                video capture (start recorder before loading)."
+	@echo "  check-tools   verify pceas + geargrafx are on PATH"
+	@echo "  clean         remove build/ and release/"
+	@echo "  package       copy ROM + README into release/"
 
 check-tools:
 	@command -v $(PCEAS) >/dev/null 2>&1 || \
@@ -105,15 +94,15 @@ check-tools:
 	      echo "       https://github.com/pce-devel/huc and add bin/ to PATH."; \
 	      exit 1; }
 	@command -v $(GEARGRAFX) >/dev/null 2>&1 || \
-	    echo "WARNING: $(GEARGRAFX) not on PATH. run-pce/load-pce will fail until installed."
+	    echo "WARNING: $(GEARGRAFX) not on PATH. run/load will fail until installed."
 	@echo "HUC_HOME  = $(HUC_HOME)"
 	@echo "PCEAS     = $$(command -v $(PCEAS))"
 	@echo "Geargrafx = $$(command -v $(GEARGRAFX) || echo '<not installed>')"
 
 # ===========================================================================
-# PC Engine / TurboGrafx-16 (PCEAS)
+# Build / Run / Load
 # ===========================================================================
-build-pce: $(PCE_OUT)
+build: $(PCE_OUT)
 
 # PCEAS writes the .pce wherever -o points, but always drops .sym + .lst
 # next to the *input* .asm. We move them into $(BUILDDIR)/pce/ post-build
@@ -133,14 +122,28 @@ $(PCE_OUT): $(PCE_ASM) $(PCE_INC)
 # $(PCE_SYM) explicitly - the Makefile drops it next to the .pce already.
 # Pass it anyway for clarity and so this still works if the user moves
 # the rom to a path with a different stem.
-run-pce: build-pce
+run: build
 	$(GEARGRAFX) $(PCE_OUT) $(PCE_SYM)
 
-# load-pce: alias for run-pce. Provided for symmetry with the multi-platform
-# load-* convention used in sibling repos (where load- variants stage the
-# binary in the emulator without auto-running, useful for clean video
-# capture). Geargrafx has no equivalent flag, so on PCE the two are the same.
-load-pce: run-pce
+# load: launch Geargrafx WITHOUT auto-loading the ROM. Prints the build
+# artefact paths first so the user can copy/paste them into the emulator's
+# "Open ROM/CD" file picker. Useful for clean video capture - start the
+# recorder once Geargrafx is up, then open the ROM by hand so the boot
+# sequence is captured from the very first frame.
+#
+# Geargrafx auto-discovers the matching .sym when the user picks the
+# .pce via the menu, so symbol-aware debugging still works here.
+load: build
+	@printf '\n'
+	@printf '  \033[1;36m🎮  Launching Geargrafx...\033[0m\n'
+	@printf '\n'
+	@printf '  \033[1;33m📦  ROM:\033[0m     %s\n' "$(realpath $(PCE_OUT))"
+	@printf '  \033[1;33m🔣  Symbols:\033[0m %s\n' "$(realpath $(PCE_SYM))"
+	@printf '\n'
+	@printf '  \033[1m➜  Use \033[1;32mGeargrafx → Open ROM/CD\033[0;1m from the menu to load the ROM.\033[0m\n'
+	@printf '     Symbols are picked up automatically from the .sym next to the .pce.\n'
+	@printf '\n'
+	@$(GEARGRAFX)
 
 # ===========================================================================
 # Housekeeping

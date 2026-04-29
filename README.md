@@ -4,7 +4,9 @@ A minimal hello-world / project template for the **NEC PC Engine** (known as the
 
 The template prints `Hello, PC Engine!` on screen and idles in a vsync loop. It exists to give you a working build/run/clean cycle and a project layout you can grow into a full game without restructuring.
 
-The structural layout (per-platform `src/<plat>/{app,engine,system}/` tree, master Makefile with `build-`/`run-`/`load-` targets, `.vscode/` task wrappers, `assets/` + `scripts/` for the asset pipeline) is modelled on the multi-platform layout used by [from-the-dead](https://github.com/andymccall/from-the-dead) so a second platform can be slotted in later as `src/<plat>/` with its own build target.
+![Hello, PC Engine! — yellow text on a dark blue background, rendered by Geargrafx from the built ROM](assets/screenshots/helloworld.png)
+
+The layout (`src/pce/{app,engine,system}/` tree, master Makefile with `build` / `run` / `load` targets, `.vscode/` task wrappers, `assets/` + `scripts/` for the asset pipeline) follows a three-tier separation between top-level entry, portable game systems, and hardware-facing HAL.
 
 ## Supported platforms
 
@@ -33,7 +35,7 @@ export PATH="$HOME/development/tools/huc/bin:$PATH"
 If `pceas` isn't on `PATH`, override `HUC_HOME` directly:
 
 ```sh
-make HUC_HOME=/path/to/huc build-pce
+make HUC_HOME=/path/to/huc build
 ```
 
 `make check-tools` verifies both `pceas` and `geargrafx` are reachable and prints the resolved `HUC_HOME`.
@@ -48,14 +50,13 @@ if [ -d "$HOME/development/tools/geargrafx/" ]; then
 fi
 ```
 
-The Makefile invokes `geargrafx $(PCE_OUT) $(PCE_SYM)`. Geargrafx auto-loads `<rom>.sym` when present, so symbol-aware debugging "just works" once the build drops the `.sym` next to the `.pce` (which it does — see the build outputs below). The emulator supports the **PCEAS symbol format** natively (both old and new variants).
+The Makefile invokes `geargrafx build/pce/hello.pce build/pce/hello.sym`. Geargrafx auto-loads `<rom>.sym` when present, so symbol-aware debugging "just works" once the build drops the `.sym` next to the `.pce` (which it does — see the build outputs below). The emulator supports the **PCEAS symbol format** natively (both old and new variants).
 
 ## Building
 
 ```sh
-make build         # alias for build-pce while only one platform is wired
-make build-pce     # PC Engine -> build/pce/hello.pce
-make all           # alias for build-pce
+make build         # PC Engine -> build/pce/hello.pce
+make all           # alias for build
 make check-tools   # verify pceas + geargrafx on PATH
 make clean         # wipe build/ and release/
 make help          # list every target
@@ -71,15 +72,37 @@ The build emits three files into `build/pce/`:
 
 ## Running
 
+There are two ways to launch the emulator, with different ergonomics:
+
 ```sh
-make run           # alias for run-pce
-make run-pce       # geargrafx build/pce/hello.pce build/pce/hello.sym
-make load-pce      # alias for run-pce (Geargrafx has no auto-run distinction)
+make run    # build + auto-load the ROM
+            #   -> geargrafx build/pce/hello.pce build/pce/hello.sym
+
+make load   # build + launch Geargrafx empty; print the artefact paths
+            #   so you can load via "Open ROM/CD" from the menu
 ```
 
-`make run` is the one-stop "build + launch in the emulator" command. It depends on `build-pce`, so a stale ROM is rebuilt before Geargrafx fires up. The `.sym` is passed as the second positional argument so Geargrafx loads symbols even if the user later renames the `.pce` (Geargrafx's auto-discovery only matches when stems agree).
+### `make run` — one-shot launch
 
-The `load-pce` target exists for parity with the multi-platform `load-*` convention used in sibling repos — when more platforms are added, `load-*` typically stages the binary in the emulator without auto-running so you can start a screen recorder cleanly before pressing RUN. Geargrafx has no equivalent flag, so on PCE the two are the same.
+The fast path. Builds (if stale), then hands the ROM and symbol file to Geargrafx as positional arguments so the game starts immediately and source-level debugging is wired up. The `.sym` is passed explicitly even though Geargrafx auto-discovers `<rom>.sym` next to the `<rom>.pce` — passing it ensures symbols still load if you later rename the `.pce` to a stem that doesn't match.
+
+### `make load` — empty launch with paths printed
+
+The video-capture / clean-recording path. Builds, then prints the absolute paths to the build artefacts and launches Geargrafx **without a ROM loaded**:
+
+```
+  🎮  Launching Geargrafx...
+
+  📦  ROM:     /home/.../pc-engine-template/build/pce/hello.pce
+  🔣  Symbols: /home/.../pc-engine-template/build/pce/hello.sym
+
+  ➜  Use Geargrafx → Open ROM/CD from the menu to load the ROM.
+     Symbols are picked up automatically from the .sym next to the .pce.
+```
+
+Use this when you want to capture the boot sequence cleanly — the emulator window opens, you start your screen recorder, *then* you load the ROM via the menu so the very first frame of the game is in the recording. (Geargrafx's auto-load behaviour kicks in once you pick the `.pce` from the dialog, so symbols still come along for the ride.)
+
+Geargrafx has no CLI flag for "open the GUI but don't auto-run a ROM", so this target gets there by launching with no positional argument and pointing you at the menu instead.
 
 ## Editor (VSCode)
 
@@ -98,8 +121,8 @@ The repo ships a `.vscode/` directory with workspace tasks and recommended exten
 pc-engine-template/
 ├── assets/                          # Source-of-truth raw assets - empty
 │                                    #   in the template; populate as the
-│                                    #   project grows. Mirror of the
-│                                    #   from-the-dead asset tree.
+│                                    #   project grows (fonts, tiles,
+│                                    #   sprites, palettes, screens).
 ├── scripts/                         # Asset-pipeline scripts. Empty in the
 │                                    #   template; this is where wrappers
 │                                    #   around pcxtool, mml, wav2vox etc.
@@ -125,7 +148,7 @@ pc-engine-template/
 
 ## Architecture at a glance
 
-The `src/pce/` tree follows the same three-tier layout as the from-the-dead reference, even though only one platform is targeted today:
+The `src/pce/` tree separates concerns across three tiers:
 
 - **`app/`** — Top-level entry point (`boot.asm`) plus per-screen modules (title, intro, room, etc. as the project grows). The PCE reset vector lands here via the CORE startup code.
 - **`engine/`** — Portable game systems: tilemap painter, sprite + player engine, collision, palette fades, menu + box renderer, text, timer, input edge-detect, asset loader.
@@ -143,13 +166,9 @@ The system layer leans on John Brandwood's **CORE(not TM)** library, which ships
 
 The library is Boost-licensed and is referenced via `PCE_INCLUDE` (set by the Makefile) rather than vendored, so updates flow through with HuC upgrades. To replace it with your own HAL, drop a parallel `bare-startup.asm` (and the helpers it implies) into `src/pce/system/` — the include path is searched in order, so project-local copies win.
 
-## Adding a second platform
-
-The `src/pce/` prefix is deliberate — to add another platform later (X16, Neo6502, Agon, etc.), drop a new `src/<plat>/` tree with its own `app/engine/system/` subdirs, add `build-<plat>`, `run-<plat>`, `load-<plat>` targets to the Makefile, sibling tasks in `.vscode/tasks.json`, and a row to the **Supported platforms** table above. Nothing in the existing PCE pipeline needs to change.
-
 ## Asset pipeline
 
-Currently a stub — the `assets/` and `scripts/` directories are empty. As the project grows, the same pattern from-the-dead uses applies here:
+Currently a stub — the `assets/` and `scripts/` directories are empty. As the project grows, a Python-driven converter pipeline can fill `build/pce/` with PCEAS-friendly blobs:
 
 | Source                      | Converter                | Output                               |
 |-----------------------------|--------------------------|--------------------------------------|

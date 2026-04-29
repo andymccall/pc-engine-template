@@ -2,9 +2,8 @@
 ;
 ; platform.inc
 ;
-; Project-wide PC Engine equates. Mirrors the role of platform.inc in the
-; from-the-dead reference project: a single home for hardware constants and
-; project-wide layout decisions, included by every translation unit.
+; Project-wide PC Engine equates. A single home for hardware constants
+; and project-wide layout decisions, included by every translation unit.
 ;
 ; ***************************************************************************
 
